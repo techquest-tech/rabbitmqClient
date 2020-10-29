@@ -21,47 +21,57 @@ type MqDestination struct {
 }
 
 //DeclareDestination declare Topic, queues....
-func (mq *MqDestination) DeclareDestination(channel *rabbitmq.Channel) error {
+func (mq *MqDestination) DeclareDestination(cnn *rabbitmq.Connection, createTempQueue bool) error {
 	logger := logrus.WithFields(logrus.Fields{
 		"topic": mq.Topic,
 		"queue": mq.Queue,
 	})
+
+	channel, err := cnn.Channel()
+	if err != nil {
+		return err
+	}
+	defer channel.Close()
+
 	autoDelete := false
-	if mq.Queue == "" {
+	if createTempQueue && mq.Queue == "" {
 		mq.Queue = fmt.Sprintf("tmp.%s.%d", mq.Topic, rand.Intn(10000))
 		logger.Info("user tempate queue.")
 		autoDelete = true
 	}
-	queue, err := channel.QueueDeclare(mq.Queue,
-		true,
-		autoDelete,
-		mq.Exclusive,
-		false,
-		nil)
-	if err != nil {
-		logger.Error("declare queue failed, ", err)
-		return err
+	if mq.Queue != "" {
+		queue, err := channel.QueueDeclare(mq.Queue,
+			true,
+			autoDelete,
+			mq.Exclusive,
+			false,
+			nil)
+		if err != nil {
+			logger.Error("declare queue failed, ", err)
+			return err
+		}
+		logger.Infof("declare queue %s done.", queue.Name)
 	}
-	logger.Infof("declare queue %s done.", queue.Name)
 
 	if mq.Topic != "" {
 		if mq.ExchangeType == "" {
 			mq.ExchangeType = "topic"
 		}
-		err = channel.ExchangeDeclare(mq.Topic, mq.ExchangeType, true, false, false, false, nil)
+		err := channel.ExchangeDeclare(mq.Topic, mq.ExchangeType, true, false, false, false, nil)
 		if err != nil {
 			logger.Error("declare topic failed.", err)
 			return err
 		}
 		logger.Info("declare done")
-
+	}
+	if mq.Queue != "" && mq.Topic != "" {
 		//declare bind
-		err = channel.QueueBind(queue.Name, "#", mq.Topic, false, nil)
+		err := channel.QueueBind(mq.Queue, "#", mq.Topic, false, nil)
 		if err != nil {
 			logger.Error("declare Bind failed.", err)
 			return err
 		}
-		logger.Infof("declare bind %s to %s done", mq.Topic, queue.Name)
+		logger.Infof("declare bind %s to %s done", mq.Topic, mq.Queue)
 	}
 
 	return nil
@@ -93,13 +103,13 @@ func (mq *MqDestination) Consume(conn *rabbitmq.Connection) (<-chan amqp.Deliver
 	}
 
 	//check if need to declare topic
-	if mq.DeclareAll || mq.Queue == "" {
-		err = mq.DeclareDestination(ch)
-		if err != nil {
-			return nil, ch, err
-		}
-		logrus.Info("declare done.")
-	}
+	// if mq.DeclareAll || mq.Queue == "" {
+	// 	err = mq.DeclareDestination(ch, true)
+	// 	if err != nil {
+	// 		return nil, ch, err
+	// 	}
+	// 	logrus.Info("declare done.")
+	// }
 	logrus.Info("start consumer")
 	//start consumer
 	data, err := ch.Consume(mq.Queue, "go-"+mq.Queue, mq.AutoAck, mq.Exclusive, false, false, nil)
@@ -112,10 +122,10 @@ func (mq *MqDestination) Produce(channel *rabbitmq.Channel, message amqp.Publish
 		"topic": mq.Topic,
 		"queue": mq.Queue,
 	})
-	if mq.DeclareAll {
-		mq.DeclareDestination(channel)
-		logger.Info("declare done.")
-	}
+	// if mq.DeclareAll {
+	// 	mq.DeclareDestination(channel, false)
+	// 	logger.Info("declare done.")
+	// }
 	err := channel.Publish(mq.Topic, mq.Queue, false, false, message)
 	if err != nil {
 		logger.Error("publish message failed, ", err)

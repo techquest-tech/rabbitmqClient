@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
@@ -19,13 +18,16 @@ func TestProducer(t *testing.T) {
 	}
 
 	dest := MqDestination{
-		Topic:      "hello.world",
-		Queue:      "i.am.the.king.of.the.world",
-		DeclareAll: true,
+		Topic: "ping",
+		Queue: "test.ping2",
+		// DeclareAll: true,
 		// AutoAck:    true,
 	}
 
 	conn, err := connSetting.Connect()
+
+	dest.DeclareDestination(conn, false)
+
 	if err != nil {
 		t.Error("connect to rabbitmq failed.", err)
 		t.Fail()
@@ -39,28 +41,28 @@ func TestProducer(t *testing.T) {
 	}
 	defer ch.Close()
 
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 100; i++ {
 		dest.Produce(ch, amqp.Publishing{
 			Body: []byte(fmt.Sprintf("Testing message at %v,message#%d", time.Now(), i)),
 		})
 	}
 
-	msgs, ch2, err := dest.Consume(conn)
-	if err != nil {
-		t.Error("failed when try consumer.")
-		t.Fail()
-	}
+	// msgs, ch2, err := dest.Consume(conn)
+	// if err != nil {
+	// 	t.Error("failed when try consumer.")
+	// 	t.Fail()
+	// }
 
-	defer ch2.Close()
+	// defer ch2.Close()
 
-	go func() {
-		for msg := range msgs {
-			logrus.Info(string(msg.Body))
-			msg.Ack(true)
-		}
-	}()
+	// go func() {
+	// 	for msg := range msgs {
+	// 		logrus.Info(string(msg.Body))
+	// 		msg.Ack(true)
+	// 	}
+	// }()
 
-	time.Sleep(3 * time.Second)
+	// time.Sleep(3 * time.Second)
 	conn.Close()
 
 }
