@@ -1,4 +1,4 @@
-module github.com/techquest-tech/rabbitmq-client
+module github.com/techquest-tech/rabbitmqClient
 
 go 1.15
 
