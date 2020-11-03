@@ -5,24 +5,26 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
 
-func TestProducer(t *testing.T) {
-	connSetting := Settings{
-		Host:     "127.0.0.1",
-		Port:     5672,
-		User:     "guest",
-		Password: "guest",
-		Vhost:    "/",
-	}
+var connSetting = Settings{
+	Host:     "127.0.0.1",
+	Port:     5672,
+	User:     "guest",
+	Password: "guest",
+	Vhost:    "/",
+}
 
-	dest := MqDestination{
-		Topic: "ping",
-		Queue: "test.ping2",
-		// DeclareAll: true,
-		// AutoAck:    true,
-	}
+var dest = MqDestination{
+	Topic: "ping",
+	Queue: "test.ping2",
+	// DeclareAll: true,
+	// AutoAck:    true,
+}
+
+func TestProducer(t *testing.T) {
 
 	conn, err := connSetting.Connect()
 
@@ -46,23 +48,17 @@ func TestProducer(t *testing.T) {
 			Body: []byte(fmt.Sprintf("Testing message at %v,message#%d", time.Now(), i)),
 		})
 	}
-
-	// msgs, ch2, err := dest.Consume(conn)
-	// if err != nil {
-	// 	t.Error("failed when try consumer.")
-	// 	t.Fail()
-	// }
-
-	// defer ch2.Close()
-
-	// go func() {
-	// 	for msg := range msgs {
-	// 		logrus.Info(string(msg.Body))
-	// 		msg.Ack(true)
-	// 	}
-	// }()
-
-	// time.Sleep(3 * time.Second)
 	conn.Close()
+}
 
+type ConsoleConsumer struct{}
+
+func (cc ConsoleConsumer) Process(msg amqp.Delivery) (string, *amqp.Publishing, error) {
+	logrus.Info(string(msg.Body))
+	return "", nil, nil
+}
+
+func TestStartConsumer(t *testing.T) {
+	StartConsumer(&dest, ConsoleConsumer{}, &connSetting)
+	time.Sleep(5 * time.Second)
 }
