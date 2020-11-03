@@ -53,7 +53,7 @@ func TestProducer(t *testing.T) {
 
 type ConsoleConsumer struct{}
 
-func (cc ConsoleConsumer) Process(msg amqp.Delivery) (string, *amqp.Publishing, error) {
+func (cc ConsoleConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Publishing, error) {
 	logrus.Info(string(msg.Body))
 	return "", nil, nil
 }

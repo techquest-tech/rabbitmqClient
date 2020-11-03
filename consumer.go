@@ -7,7 +7,7 @@ import (
 
 // OnReceive interface for Receiver
 type OnReceive interface {
-	Process(msg amqp.Delivery) (string, *amqp.Publishing, error)
+	OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Publishing, error)
 }
 
 // FailOnError failed if any error
@@ -32,11 +32,9 @@ func StartConsumer(msg *MqDestination, receiver OnReceive, connSetting *Settings
 
 	msgs, ch, err := msg.Consume(conn)
 	FailOnError(err, "consumer failed.")
-	// forever := make(chan bool)
 	go func() {
 		for d := range msgs {
-
-			key, repo, err := receiver.Process(d)
+			key, repo, err := receiver.OnReceiveMessage(d)
 			if !msg.AutoAck {
 				if err == nil {
 					d.Ack(false)
