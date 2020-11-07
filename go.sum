@@ -7,5 +7,7 @@ github.com/streadway/amqp v1.0.0/go.mod h1:AZpEONHx3DKn8O/DFsRAY58/XVQiIPMTMB1Sd
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/techquest-tech/go-amqp-reconnect v0.0.0-20201028135714-a9da157225b0 h1:q1B7Fvy7qDVGvy5l/zo6DJ9KNEVfm2IpahRrk2GeqiY=
 github.com/techquest-tech/go-amqp-reconnect v0.0.0-20201028135714-a9da157225b0/go.mod h1:pm1GPH4HuIG9SBAn+88XzYxgIL7Jqy6/wLK8LmZLZ4Q=
+github.com/techquest-tech/go-amqp-reconnect v0.0.2 h1:Uiis32XM8PxqU8wA0E9eBtnu9KkFbLy3OWGZUIK3t7w=
+github.com/techquest-tech/go-amqp-reconnect v0.0.2/go.mod h1:pm1GPH4HuIG9SBAn+88XzYxgIL7Jqy6/wLK8LmZLZ4Q=
 golang.org/x/sys v0.0.0-20191026070338-33540a1f6037 h1:YyJpGZS1sBuBCzLAR1VEpK193GlqGZbnPFnPV/5Rsb4=
 golang.org/x/sys v0.0.0-20191026070338-33540a1f6037/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
