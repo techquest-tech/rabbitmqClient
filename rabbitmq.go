@@ -78,7 +78,7 @@ func (mq *MqDestination) DeclareDestination(cnn *rabbitmq.Connection, createTemp
 }
 
 //Consume start consumer
-func (mq *MqDestination) Consume(conn *rabbitmq.Connection) (<-chan amqp.Delivery, *rabbitmq.Channel, error) {
+func (mq *MqDestination) Consume(conn *rabbitmq.Connection, consumerTag string) (<-chan amqp.Delivery, *rabbitmq.Channel, error) {
 
 	logger := logrus.WithFields(logrus.Fields{
 		"topic": mq.Topic,
@@ -112,7 +112,8 @@ func (mq *MqDestination) Consume(conn *rabbitmq.Connection) (<-chan amqp.Deliver
 	// }
 	logrus.Info("start consumer")
 	//start consumer
-	data, err := ch.Consume(mq.Queue, "go-"+mq.Queue, mq.AutoAck, mq.Exclusive, false, false, nil)
+
+	data, err := ch.Consume(mq.Queue, consumerTag, mq.AutoAck, mq.Exclusive, false, false, nil)
 	return data, ch, err
 }
 

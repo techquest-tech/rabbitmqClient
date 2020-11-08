@@ -15,6 +15,9 @@ var connSetting = Settings{
 	User:     "guest",
 	Password: "guest",
 	Vhost:    "/",
+	Prop: map[string]interface{}{
+		"connection_name": "addon-retry-v20201106.1",
+	},
 }
 
 var dest = MqDestination{
@@ -60,5 +63,5 @@ func (cc ConsoleConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Pub
 
 func TestStartConsumer(t *testing.T) {
 	StartConsumer(&dest, ConsoleConsumer{}, &connSetting)
-	time.Sleep(5 * time.Second)
+	time.Sleep(2 * time.Second)
 }

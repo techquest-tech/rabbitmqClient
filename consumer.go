@@ -30,7 +30,12 @@ func StartConsumer(msg *MqDestination, receiver OnReceive, connSetting *Settings
 
 	logrus.Infof("Start consumer for %s", msg.Queue)
 
-	msgs, ch, err := msg.Consume(conn)
+	consumerTag := ""
+	if tag, ok := connSetting.Prop["connection_name"]; ok {
+		consumerTag = tag.(string)
+	}
+
+	msgs, ch, err := msg.Consume(conn, consumerTag)
 	FailOnError(err, "consumer failed.")
 	go func() {
 		for d := range msgs {
