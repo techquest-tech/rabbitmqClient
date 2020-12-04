@@ -1,12 +1,14 @@
 package rabbitmq
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
+	"github.com/stretchr/testify/assert"
 )
 
 var connSetting = Settings{
@@ -25,6 +27,10 @@ var dest = MqDestination{
 	Queue: "test.ping2",
 	// DeclareAll: true,
 	// AutoAck:    true,
+}
+
+var destRpc = MqDestination{
+	Queue: "test.rpc",
 }
 
 func TestProducer(t *testing.T) {
@@ -64,4 +70,41 @@ func (cc ConsoleConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Pub
 func TestStartConsumer(t *testing.T) {
 	StartConsumer(&dest, ConsoleConsumer{}, &connSetting)
 	time.Sleep(2 * time.Second)
+}
+
+type RpcConsumer struct{}
+
+func (r RpcConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Publishing, error) {
+	logrus.Info(string(msg.Body))
+	return "", WrapRepo(msg, []byte("replied messages"), nil), nil
+}
+
+func TestRpc(t *testing.T) {
+	conn, err := connSetting.Connect()
+
+	destRpc.DeclareDestination(conn, false)
+
+	if err != nil {
+		t.Error("connect to rabbitmq failed.", err)
+		t.Fail()
+	}
+	defer conn.Close()
+
+	go StartConsumer(&destRpc, RpcConsumer{}, &connSetting)
+
+	reqBody := []byte("Testing RPC")
+
+	req := amqp.Publishing{
+		Body: reqBody,
+	}
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
+
+	defer cancel()
+
+	replied, err := destRpc.RPC(ctx, conn, req)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, replied)
+
 }

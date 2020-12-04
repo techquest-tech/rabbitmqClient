@@ -1,6 +1,7 @@
 package rabbitmq
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 
@@ -19,6 +20,9 @@ type MqDestination struct {
 	Prefetch     int
 	DeclareAll   bool
 }
+
+// //default RPC timeout to 30 seconds
+// var defaultTimeout = 30 * time.Second
 
 //DeclareDestination declare Topic, queues....
 func (mq *MqDestination) DeclareDestination(cnn *rabbitmq.Connection, createTempQueue bool) error {
@@ -117,12 +121,16 @@ func (mq *MqDestination) Consume(conn *rabbitmq.Connection, consumerTag string) 
 	return data, ch, err
 }
 
-//Produce publish message
-func (mq *MqDestination) Produce(channel *rabbitmq.Channel, message amqp.Publishing) error {
-	logger := logrus.WithFields(logrus.Fields{
+func (mq *MqDestination) getLogger() *logrus.Entry {
+	return logrus.WithFields(logrus.Fields{
 		"topic": mq.Topic,
 		"queue": mq.Queue,
 	})
+}
+
+//Produce publish message
+func (mq *MqDestination) Produce(channel *rabbitmq.Channel, message amqp.Publishing) error {
+	logger := mq.getLogger()
 	// if mq.DeclareAll {
 	// 	mq.DeclareDestination(channel, false)
 	// 	logger.Info("declare done.")
@@ -136,4 +144,61 @@ func (mq *MqDestination) Produce(channel *rabbitmq.Channel, message amqp.Publish
 	logger.Info("publish message done.")
 
 	return nil
+}
+
+func (mq *MqDestination) generateCorrID() string {
+	l := 32
+	bytes := make([]byte, l)
+	for i := 0; i < l; i++ {
+		bytes[i] = byte('a' + rand.Intn('z'-'a'))
+	}
+	return string(bytes)
+}
+
+//RPC RPC over rabbitmq message. timeout setting should be ctx
+func (mq *MqDestination) RPC(ctx context.Context, conn *rabbitmq.Connection, message amqp.Publishing) (*amqp.Delivery, error) {
+	log := mq.getLogger()
+
+	ch, err := conn.Channel()
+	if err != nil {
+		return nil, err
+	}
+	defer ch.Close()
+
+	replyQueue, err := ch.QueueDeclare("", false, true, true, false, nil)
+
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug("make template queue ready, queue = ", replyQueue.Name)
+
+	msgs, err := ch.Consume(replyQueue.Name, fmt.Sprintf("%s-rpc", mq.Queue), true, true, false, false, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	corrID := mq.generateCorrID()
+
+	log.Debug("sending message")
+
+	message.ReplyTo = replyQueue.Name
+	message.CorrelationId = corrID
+
+	err = ch.Publish(mq.Topic,
+		mq.Queue,
+		false,
+		false,
+		message,
+	)
+	log.Info("rpc send out done")
+
+	select {
+	case <-ctx.Done():
+		log.Error("RPC time out or canceled. err ", ctx.Err())
+		return nil, ctx.Err()
+	case replied := <-msgs:
+		log.Info("get replied")
+		return &replied, nil
+	}
 }

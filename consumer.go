@@ -1,6 +1,8 @@
 package rabbitmq
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
@@ -19,6 +21,7 @@ func FailOnError(err error, msg string) {
 
 // StartConsumer start process.
 func StartConsumer(msg *MqDestination, receiver OnReceive, connSetting *Settings) {
+	log := msg.getLogger()
 
 	conn, err := connSetting.Connect()
 
@@ -28,7 +31,8 @@ func StartConsumer(msg *MqDestination, receiver OnReceive, connSetting *Settings
 		msg.DeclareDestination(conn, true)
 	}
 
-	logrus.Infof("Start consumer for %s", msg.Queue)
+	log.Info("start consumer")
+	// logrus.Infof("Start consumer for %s", msg.Queue)
 
 	consumerTag := ""
 	if tag, ok := connSetting.Prop["connection_name"]; ok {
@@ -36,26 +40,51 @@ func StartConsumer(msg *MqDestination, receiver OnReceive, connSetting *Settings
 	}
 
 	msgs, ch, err := msg.Consume(conn, consumerTag)
+
 	FailOnError(err, "consumer failed.")
+
 	go func() {
 		for d := range msgs {
 			key, repo, err := receiver.OnReceiveMessage(d)
+
+			if key == "" && d.ReplyTo != "" {
+				key = d.ReplyTo
+				log.Info("found replyTo value ", key)
+			}
+
 			if !msg.AutoAck {
 				if err == nil {
 					d.Ack(false)
 				} else {
-					logrus.Warn("receiver failed, nack message ", msg.Queue)
+					log.Warn("receiver failed, nack message ", msg.Queue)
 					d.Nack(false, false)
 				}
 			}
 
-			if key != "" && repo != nil {
-				ch.Publish("", key, false, false, *repo)
-				logrus.Infof("Receiver replied/forward message to %s", key)
+			if key != "" {
+				if repo != nil {
+					ch.Publish("", key, false, false, *repo)
+					log.Info("Receiver replied/forward message to ", key)
+				} else {
+					if err != nil {
+						replybody := fmt.Sprintf("{\"error\": %v, \"type\":%t}", err, err)
+						headers := amqp.Table{
+							"error": true,
+						}
+						ch.Publish("", key, false, false, amqp.Publishing{
+							Headers: headers,
+							Body:    []byte(replybody),
+						})
+						log.Info("replied/forward error to ", key)
+					}
+					log.Warn("no message replied or forward. but should be")
+				}
+			} else {
+				log.Debug("no message need to be replied or forward.")
 			}
 		}
 	}()
-	logrus.Infof(" [*] Q(%s) is waiting for message", msg.Queue)
+	log.Info("waiting for message")
 }
 
 // WrapRepo wrap up for repo to rabbitmq
