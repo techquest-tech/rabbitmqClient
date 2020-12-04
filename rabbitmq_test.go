@@ -30,7 +30,8 @@ var dest = MqDestination{
 }
 
 var destRpc = MqDestination{
-	Queue: "test.rpc",
+	Queue:   "test.rpc",
+	AutoAck: true,
 }
 
 func TestProducer(t *testing.T) {
@@ -74,12 +75,17 @@ func TestStartConsumer(t *testing.T) {
 
 type RpcConsumer struct{}
 
+var sleepfor = time.Duration(2)
+
 func (r RpcConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Publishing, error) {
 	logrus.Info(string(msg.Body))
+	time.Sleep(sleepfor * time.Second)
 	return "", WrapRepo(msg, []byte("replied messages"), nil), nil
 }
 
 func TestRpc(t *testing.T) {
+	logrus.SetLevel(logrus.DebugLevel)
+
 	conn, err := connSetting.Connect()
 
 	destRpc.DeclareDestination(conn, false)
@@ -98,13 +104,22 @@ func TestRpc(t *testing.T) {
 		Body: reqBody,
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), 2*time.Second)
 
 	defer cancel()
 
+	sleepfor = 1
 	replied, err := destRpc.RPC(ctx, conn, req)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, replied)
 
+	ctx2, cancel2 := context.WithTimeout(context.TODO(), 2*time.Second)
+	defer cancel2()
+
+	sleepfor = 3
+	replied, err = destRpc.RPC(ctx2, conn, req)
+
+	assert.NotNil(t, err)
+	assert.Nil(t, replied)
 }
