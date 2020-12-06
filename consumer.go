@@ -76,8 +76,9 @@ func StartConsumer(msg *MqDestination, receiver OnReceive, connSetting *Settings
 							Body:    []byte(replybody),
 						})
 						log.Info("replied/forward error to ", key)
+					} else {
+						log.Warn("no message replied or forward. but should be")
 					}
-					log.Warn("no message replied or forward. but should be")
 				}
 			} else {
 				log.Debug("no message need to be replied or forward.")
