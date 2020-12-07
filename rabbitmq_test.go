@@ -122,4 +122,7 @@ func TestRpc(t *testing.T) {
 
 	assert.NotNil(t, err)
 	assert.Nil(t, replied)
+
+	// time.Sleep(20 * time.Second)
+
 }

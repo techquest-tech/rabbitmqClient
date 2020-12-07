@@ -55,6 +55,9 @@ func StartConsumer(msg *MqDestination, receiver OnReceive, connSetting *Settings
 			if !msg.AutoAck {
 				if err == nil {
 					d.Ack(false)
+				} else if d.ReplyTo != "" {
+					log.Info("auto ack if ReplyTo is not empty")
+					d.Ack(false)
 				} else {
 					log.Warn("receiver failed, nack message ", msg.Queue)
 					d.Nack(false, false)
