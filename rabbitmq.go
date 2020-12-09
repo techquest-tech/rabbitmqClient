@@ -165,7 +165,7 @@ func (mq *MqDestination) RPC(ctx context.Context, conn *rabbitmq.Connection, mes
 	}
 	defer ch.Close()
 
-	replyQueue, err := ch.QueueDeclare("", false, true, true, false, nil)
+	replyQueue, err := ch.QueueDeclare("", false, true, false, false, nil)
 
 	if err != nil {
 		return nil, err
@@ -173,7 +173,7 @@ func (mq *MqDestination) RPC(ctx context.Context, conn *rabbitmq.Connection, mes
 
 	log.Debug("make template queue ready, queue = ", replyQueue.Name)
 
-	msgs, err := ch.Consume(replyQueue.Name, fmt.Sprintf("%s-rpc", mq.Queue), true, true, false, false, nil)
+	msgs, err := ch.Consume(replyQueue.Name, fmt.Sprintf("%s-rpc", mq.Queue), true, false, false, false, nil)
 	if err != nil {
 		return nil, err
 	}

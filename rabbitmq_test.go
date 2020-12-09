@@ -29,7 +29,7 @@ var dest = MqDestination{
 	// AutoAck:    true,
 }
 
-var destRpc = MqDestination{
+var destRPC = MqDestination{
 	Queue:   "test.rpc",
 	AutoAck: true,
 }
@@ -73,11 +73,11 @@ func TestStartConsumer(t *testing.T) {
 	time.Sleep(2 * time.Second)
 }
 
-type RpcConsumer struct{}
+type RPCConsumer struct{}
 
 var sleepfor = time.Duration(2)
 
-func (r RpcConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Publishing, error) {
+func (r RPCConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Publishing, error) {
 	logrus.Info(string(msg.Body))
 	time.Sleep(sleepfor * time.Second)
 	return "", WrapRepo(msg, []byte("replied messages"), nil), nil
@@ -88,7 +88,7 @@ func TestRpc(t *testing.T) {
 
 	conn, err := connSetting.Connect()
 
-	destRpc.DeclareDestination(conn, false)
+	destRPC.DeclareDestination(conn, false)
 
 	if err != nil {
 		t.Error("connect to rabbitmq failed.", err)
@@ -96,7 +96,7 @@ func TestRpc(t *testing.T) {
 	}
 	defer conn.Close()
 
-	go StartConsumer(&destRpc, RpcConsumer{}, &connSetting)
+	go StartConsumer(&destRPC, RPCConsumer{}, &connSetting)
 
 	reqBody := []byte("Testing RPC")
 
@@ -109,7 +109,7 @@ func TestRpc(t *testing.T) {
 	defer cancel()
 
 	sleepfor = 1
-	replied, err := destRpc.RPC(ctx, conn, req)
+	replied, err := destRPC.RPC(ctx, conn, req)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, replied)
@@ -118,7 +118,7 @@ func TestRpc(t *testing.T) {
 	defer cancel2()
 
 	sleepfor = 3
-	replied, err = destRpc.RPC(ctx2, conn, req)
+	replied, err = destRPC.RPC(ctx2, conn, req)
 
 	assert.NotNil(t, err)
 	assert.Nil(t, replied)
