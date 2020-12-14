@@ -6,17 +6,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/creasty/defaults"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"github.com/stretchr/testify/assert"
 )
 
 var connSetting = Settings{
-	Host:     "127.0.0.1",
-	Port:     5672,
-	User:     "guest",
-	Password: "guest",
-	Vhost:    "/",
+	// Host:     "127.0.0.1",
+	// Port:     5672,
+	// User:     "guest",
+	// Password: "guest",
+	// Vhost:    "/",
 	Prop: map[string]interface{}{
 		"connection_name": "addon-retry-v20201106.1",
 	},
@@ -35,6 +36,9 @@ var destRPC = MqDestination{
 }
 
 func TestProducer(t *testing.T) {
+	defaults.Set(&connSetting)
+
+	assert.Equal(t, "localhost", connSetting.Host)
 
 	conn, err := connSetting.Connect()
 

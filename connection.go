@@ -3,6 +3,7 @@ package rabbitmq
 import (
 	"fmt"
 
+	"github.com/creasty/defaults"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"github.com/techquest-tech/go-amqp-reconnect/rabbitmq"
@@ -10,11 +11,11 @@ import (
 
 // Settings Settings, should include url & options
 type Settings struct {
-	Host     string
-	Port     uint
-	User     string
-	Password string
-	Vhost    string
+	Host     string `default:"localhost"`
+	Port     uint   `default:"5672"`
+	User     string `default:"guest"`
+	Password string `default:"guest"`
+	Vhost    string `default:"/"`
 	Prop     amqp.Table
 }
 
@@ -30,6 +31,7 @@ func (r *Settings) String() string {
 
 // Connect make connection to Rabbitmq
 func (r *Settings) Connect() (*rabbitmq.Connection, error) {
+	defaults.Set(r)
 	rabbitmqURL := r.ConnURL()
 
 	logrus.Infof("Dial up to %s", r.String())
