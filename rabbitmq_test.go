@@ -24,8 +24,9 @@ var connSetting = Settings{
 }
 
 var dest = MqDestination{
-	Topic: "ping",
-	Queue: "test.ping2",
+	Topic:    "ping",
+	Queue:    "test.ping2",
+	Prefetch: 1,
 	// DeclareAll: true,
 	// AutoAck:    true,
 }
@@ -69,12 +70,13 @@ type ConsoleConsumer struct{}
 
 func (cc ConsoleConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Publishing, error) {
 	logrus.Info(string(msg.Body))
+	time.Sleep(5 * time.Second)
 	return "", nil, nil
 }
 
 func TestStartConsumer(t *testing.T) {
 	StartConsumer(&dest, ConsoleConsumer{}, &connSetting)
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 }
 
 type RPCConsumer struct{}

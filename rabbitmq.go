@@ -97,14 +97,18 @@ func (mq *MqDestination) Consume(conn *rabbitmq.Connection, consumerTag string) 
 		return nil, ch, err
 	}
 	// defer ch.Close()
-
-	if mq.Prefetch > 0 {
-		err = ch.Qos(mq.Prefetch, 0, false)
-		if err != nil {
-			return nil, ch, err
-		}
-		logger.Info("set prefetch size = ", mq.Prefetch)
+	// make prefetch default =1
+	if mq.Prefetch <= 0 {
+		mq.Prefetch = 1
 	}
+
+	// if mq.Prefetch > 0 {
+	err = ch.Qos(mq.Prefetch, 0, false)
+	if err != nil {
+		return nil, ch, err
+	}
+	logger.Info("set prefetch size = ", mq.Prefetch)
+	// }
 
 	//check if need to declare topic
 	// if mq.DeclareAll || mq.Queue == "" {

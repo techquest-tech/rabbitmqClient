@@ -20,15 +20,15 @@ func FailOnError(err error, msg string) {
 }
 
 // StartConsumer start process.
-func StartConsumer(msg *MqDestination, receiver OnReceive, connSetting *Settings) {
-	log := msg.getLogger()
+func StartConsumer(destination *MqDestination, receiver OnReceive, connSetting *Settings) {
+	log := destination.getLogger()
 
 	conn, err := connSetting.Connect()
 
 	FailOnError(err, "connect to rabbitmq failed.")
 
-	if msg.Queue == "" {
-		msg.DeclareDestination(conn, true)
+	if destination.Queue == "" {
+		destination.DeclareDestination(conn, true)
 	}
 
 	log.Info("start consumer")
@@ -39,53 +39,55 @@ func StartConsumer(msg *MqDestination, receiver OnReceive, connSetting *Settings
 		consumerTag = tag.(string)
 	}
 
-	msgs, ch, err := msg.Consume(conn, consumerTag)
+	msgs, ch, err := destination.Consume(conn, consumerTag)
 
 	FailOnError(err, "consumer failed.")
 
 	go func() {
 		for d := range msgs {
-			key, repo, err := receiver.OnReceiveMessage(d)
+			go func(d amqp.Delivery) {
+				key, repo, err := receiver.OnReceiveMessage(d)
 
-			if key == "" && d.ReplyTo != "" {
-				key = d.ReplyTo
-				log.Info("found replyTo value ", key)
-			}
-
-			if !msg.AutoAck {
-				if err == nil {
-					d.Ack(false)
-				} else if d.ReplyTo != "" {
-					log.Info("auto ack if ReplyTo is not empty")
-					d.Ack(false)
-				} else {
-					log.Warn("receiver failed, nack message ", msg.Queue)
-					d.Nack(false, false)
+				if key == "" && d.ReplyTo != "" {
+					key = d.ReplyTo
+					log.Info("found replyTo value ", key)
 				}
-			}
 
-			if key != "" {
-				if repo != nil {
-					ch.Publish("", key, false, false, *repo)
-					log.Info("Receiver replied/forward message to ", key)
-				} else {
-					if err != nil {
-						replybody := fmt.Sprintf("{\"error\": %v, \"type\":%t}", err, err)
-						headers := amqp.Table{
-							"error": true,
-						}
-						ch.Publish("", key, false, false, amqp.Publishing{
-							Headers: headers,
-							Body:    []byte(replybody),
-						})
-						log.Info("replied/forward error to ", key)
+				if !destination.AutoAck {
+					if err == nil {
+						d.Ack(false)
+					} else if d.ReplyTo != "" {
+						log.Info("auto ack if ReplyTo is not empty")
+						d.Ack(false)
 					} else {
-						log.Warn("no message replied or forward. but should be")
+						log.Warn("receiver failed, nack message ", destination.Queue)
+						d.Nack(false, false)
 					}
 				}
-			} else {
-				log.Debug("no message need to be replied or forward.")
-			}
+
+				if key != "" {
+					if repo != nil {
+						ch.Publish("", key, false, false, *repo)
+						log.Info("Receiver replied/forward message to ", key)
+					} else {
+						if err != nil {
+							replybody := fmt.Sprintf("{\"error\": %v, \"type\":%t}", err, err)
+							headers := amqp.Table{
+								"error": true,
+							}
+							ch.Publish("", key, false, false, amqp.Publishing{
+								Headers: headers,
+								Body:    []byte(replybody),
+							})
+							log.Info("replied/forward error to ", key)
+						} else {
+							log.Warn("no message replied or forward. but should be")
+						}
+					}
+				} else {
+					log.Debug("no message need to be replied or forward.")
+				}
+			}(d)
 		}
 	}()
 	log.Info("waiting for message")
