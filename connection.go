@@ -2,12 +2,15 @@ package rabbitmq
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/creasty/defaults"
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"github.com/techquest-tech/go-amqp-reconnect/rabbitmq"
 )
+
+var sharedmu sync.RWMutex
 
 // Settings Settings, should include url & options
 type Settings struct {
@@ -16,7 +19,10 @@ type Settings struct {
 	User     string `default:"guest"`
 	Password string `default:"guest"`
 	Vhost    string `default:"/"`
+	Shared   bool   `defalut:"true"`
 	Prop     amqp.Table
+
+	cnn *rabbitmq.Connection
 }
 
 // ConnURL return connection URL for Dial
@@ -31,6 +37,14 @@ func (r *Settings) String() string {
 
 // Connect make connection to Rabbitmq
 func (r *Settings) Connect() (*rabbitmq.Connection, error) {
+
+	if r.Shared && r.cnn != nil {
+		return r.cnn, nil
+	}
+
+	sharedmu.Lock()
+	defer sharedmu.Unlock()
+
 	defaults.Set(r)
 	rabbitmqURL := r.ConnURL()
 
@@ -42,7 +56,9 @@ func (r *Settings) Connect() (*rabbitmq.Connection, error) {
 	conn, err := rabbitmq.DialConfig(rabbitmqURL, amqp.Config{
 		Properties: r.Prop,
 	})
-
+	if r.Shared && err != nil {
+		r.cnn = conn
+	}
 	return conn, err
 }
 
