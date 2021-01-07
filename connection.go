@@ -45,3 +45,24 @@ func (r *Settings) Connect() (*rabbitmq.Connection, error) {
 
 	return conn, err
 }
+
+//Factory factory for connection pool
+func (r Settings) Factory() (interface{}, error) {
+	return r.Connect()
+}
+
+//Ping test connection status.
+func (r Settings) Ping(v interface{}) error {
+	cnn := v.(*rabbitmq.Connection)
+	ch, err := cnn.Channel()
+	if err != nil {
+		ch.Close()
+	}
+	return err
+}
+
+//Close close connection
+func (r Settings) Close(v interface{}) error {
+	cnn := v.(*rabbitmq.Connection)
+	return cnn.Close()
+}
