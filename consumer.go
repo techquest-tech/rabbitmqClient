@@ -72,8 +72,8 @@ func StartConsumer(destination *MqDestination, receiver OnReceive, connSetting *
 
 					if strings.Contains(key, "/") {
 						r := strings.Split(key, "/")
+						exchange = r[0]
 						if len(r) > 1 {
-							exchange = r[0]
 							route = r[1]
 						}
 					}
