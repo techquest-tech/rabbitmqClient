@@ -139,6 +139,7 @@ func (mq *MqDestination) Produce(channel *rabbitmq.Channel, message amqp.Publish
 	// 	mq.DeclareDestination(channel, false)
 	// 	logger.Info("declare done.")
 	// }
+	message.DeliveryMode = amqp.Persistent
 	err := channel.Publish(mq.Topic, mq.Queue, false, false, message)
 	if err != nil {
 		logger.Error("publish message failed, ", err)

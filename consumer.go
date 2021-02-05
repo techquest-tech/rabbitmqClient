@@ -2,6 +2,7 @@ package rabbitmq
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
@@ -66,8 +67,19 @@ func StartConsumer(destination *MqDestination, receiver OnReceive, connSetting *
 				}
 
 				if key != "" {
+					exchange := ""
+					route := key
+
+					if strings.Contains(key, "/") {
+						r := strings.Split(key, "/")
+						if len(r) > 1 {
+							exchange = r[0]
+							route = r[1]
+						}
+					}
+
 					if repo != nil {
-						ch.Publish("", key, false, false, *repo)
+						ch.Publish(exchange, route, false, false, *repo)
 						log.Info("Receiver replied/forward message to ", key)
 					} else {
 						if err != nil {
@@ -75,7 +87,7 @@ func StartConsumer(destination *MqDestination, receiver OnReceive, connSetting *
 							headers := amqp.Table{
 								"error": true,
 							}
-							ch.Publish("", key, false, false, amqp.Publishing{
+							ch.Publish(exchange, route, false, false, amqp.Publishing{
 								Headers: headers,
 								Body:    []byte(replybody),
 							})
