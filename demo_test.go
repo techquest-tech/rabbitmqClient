@@ -23,7 +23,7 @@ var democonn = Settings{
 
 func TestDemoSend(t *testing.T) {
 
-	dest := MqDestination{
+	dest := Destination{
 		Topic:        "escm.po",
 		ExchangeType: "headers",
 		DeclareAll:   true,
@@ -93,7 +93,7 @@ func (d DemoConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Publish
 }
 
 func TestDemoConsumer(t *testing.T) {
-	dest := &MqDestination{
+	dest := &Destination{
 		Queue: "demo.helloworld",
 		// AutoAck: true,
 	}

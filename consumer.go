@@ -21,7 +21,7 @@ func FailOnError(err error, msg string) {
 }
 
 // StartConsumer start process.
-func StartConsumer(destination *MqDestination, receiver OnReceive, connSetting *Settings) {
+func StartConsumer(destination *Destination, receiver OnReceive, connSetting *Settings) {
 	log := destination.getLogger()
 
 	conn, err := connSetting.Connect()

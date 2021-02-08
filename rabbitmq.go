@@ -10,8 +10,8 @@ import (
 	"github.com/techquest-tech/go-amqp-reconnect/rabbitmq"
 )
 
-//MqDestination Rabbitmq destination
-type MqDestination struct {
+//Destination Rabbitmq destination
+type Destination struct {
 	Queue        string
 	Topic        string
 	ExchangeType string
@@ -25,7 +25,7 @@ type MqDestination struct {
 // var defaultTimeout = 30 * time.Second
 
 //DeclareDestination declare Topic, queues....
-func (mq *MqDestination) DeclareDestination(cnn *rabbitmq.Connection, createTempQueue bool) error {
+func (mq *Destination) DeclareDestination(cnn *rabbitmq.Connection, createTempQueue bool) error {
 	logger := logrus.WithFields(logrus.Fields{
 		"topic": mq.Topic,
 		"queue": mq.Queue,
@@ -82,7 +82,7 @@ func (mq *MqDestination) DeclareDestination(cnn *rabbitmq.Connection, createTemp
 }
 
 //Consume start consumer
-func (mq *MqDestination) Consume(conn *rabbitmq.Connection, consumerTag string) (<-chan amqp.Delivery, *rabbitmq.Channel, error) {
+func (mq *Destination) Consume(conn *rabbitmq.Connection, consumerTag string) (<-chan amqp.Delivery, *rabbitmq.Channel, error) {
 
 	logger := logrus.WithFields(logrus.Fields{
 		"topic": mq.Topic,
@@ -125,7 +125,7 @@ func (mq *MqDestination) Consume(conn *rabbitmq.Connection, consumerTag string) 
 	return data, ch, err
 }
 
-func (mq *MqDestination) getLogger() *logrus.Entry {
+func (mq *Destination) getLogger() *logrus.Entry {
 	return logrus.WithFields(logrus.Fields{
 		"topic": mq.Topic,
 		"queue": mq.Queue,
@@ -133,7 +133,7 @@ func (mq *MqDestination) getLogger() *logrus.Entry {
 }
 
 //Produce publish message
-func (mq *MqDestination) Produce(channel *rabbitmq.Channel, message amqp.Publishing) error {
+func (mq *Destination) Produce(channel *rabbitmq.Channel, message amqp.Publishing) error {
 	logger := mq.getLogger()
 	// if mq.DeclareAll {
 	// 	mq.DeclareDestination(channel, false)
@@ -151,7 +151,7 @@ func (mq *MqDestination) Produce(channel *rabbitmq.Channel, message amqp.Publish
 	return nil
 }
 
-func (mq *MqDestination) generateCorrID() string {
+func (mq *Destination) generateCorrID() string {
 	l := 32
 	bytes := make([]byte, l)
 	for i := 0; i < l; i++ {
@@ -161,7 +161,7 @@ func (mq *MqDestination) generateCorrID() string {
 }
 
 //RPC RPC over rabbitmq message. timeout setting should be ctx
-func (mq *MqDestination) RPC(ctx context.Context, conn *rabbitmq.Connection, message amqp.Publishing) (*amqp.Delivery, error) {
+func (mq *Destination) RPC(ctx context.Context, conn *rabbitmq.Connection, message amqp.Publishing) (*amqp.Delivery, error) {
 	log := mq.getLogger()
 
 	ch, err := conn.Channel()

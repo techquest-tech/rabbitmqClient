@@ -23,7 +23,7 @@ var connSetting = Settings{
 	},
 }
 
-var dest = MqDestination{
+var dest = Destination{
 	Topic:    "helloworld",
 	Queue:    "demo.helloworld",
 	Prefetch: 1,
@@ -31,7 +31,7 @@ var dest = MqDestination{
 	// AutoAck:    true,
 }
 
-var destRPC = MqDestination{
+var destRPC = Destination{
 	Queue:   "test.rpc",
 	AutoAck: true,
 }
