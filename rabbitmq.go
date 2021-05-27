@@ -25,17 +25,17 @@ type Destination struct {
 // var defaultTimeout = 30 * time.Second
 
 //DeclareDestination declare Topic, queues....
-func (mq *Destination) DeclareDestination(cnn *rabbitmq.Connection, createTempQueue bool) error {
+func (mq *Destination) DeclareDestination(channel *rabbitmq.Channel, createTempQueue bool) error {
 	logger := logrus.WithFields(logrus.Fields{
 		"topic": mq.Topic,
 		"queue": mq.Queue,
 	})
 
-	channel, err := cnn.Channel()
-	if err != nil {
-		return err
-	}
-	defer channel.Close()
+	// channel, err := cnn.Channel()
+	// if err != nil {
+	// 	return err
+	// }
+	// defer channel.Close()
 
 	autoDelete := false
 	if createTempQueue && mq.Queue == "" {
@@ -82,7 +82,7 @@ func (mq *Destination) DeclareDestination(cnn *rabbitmq.Connection, createTempQu
 }
 
 //Consume start consumer
-func (mq *Destination) Consume(conn *rabbitmq.Connection, consumerTag string) (<-chan amqp.Delivery, *rabbitmq.Channel, error) {
+func (mq *Destination) Consume(ch *rabbitmq.Channel, consumerTag string) (<-chan amqp.Delivery, *rabbitmq.Channel, error) {
 
 	logger := logrus.WithFields(logrus.Fields{
 		"topic": mq.Topic,
@@ -91,11 +91,11 @@ func (mq *Destination) Consume(conn *rabbitmq.Connection, consumerTag string) (<
 
 	logger.Info("start consumer.")
 
-	ch, err := conn.Channel()
-	if err != nil {
-		logger.Errorf("build channel failed.%v", err)
-		return nil, ch, err
-	}
+	// ch, err := conn.Channel()
+	// if err != nil {
+	// 	logger.Errorf("build channel failed.%v", err)
+	// 	return nil, ch, err
+	// }
 	// defer ch.Close()
 	// make prefetch default =1
 	if mq.Prefetch <= 0 {
@@ -103,7 +103,7 @@ func (mq *Destination) Consume(conn *rabbitmq.Connection, consumerTag string) (<
 	}
 
 	// if mq.Prefetch > 0 {
-	err = ch.Qos(mq.Prefetch, 0, false)
+	err := ch.Qos(mq.Prefetch, 0, false)
 	if err != nil {
 		return nil, ch, err
 	}
@@ -161,14 +161,14 @@ func (mq *Destination) generateCorrID() string {
 }
 
 //RPC RPC over rabbitmq message. timeout setting should be ctx
-func (mq *Destination) RPC(ctx context.Context, conn *rabbitmq.Connection, message amqp.Publishing) (*amqp.Delivery, error) {
+func (mq *Destination) RPC(ctx context.Context, ch *rabbitmq.Channel, message amqp.Publishing) (*amqp.Delivery, error) {
 	log := mq.getLogger()
 
-	ch, err := conn.Channel()
-	if err != nil {
-		return nil, err
-	}
-	defer ch.Close()
+	// ch, err := conn.Channel()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// defer ch.Close()
 
 	replyQueue, err := ch.QueueDeclare("", false, true, false, false, nil)
 

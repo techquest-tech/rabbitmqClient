@@ -43,14 +43,14 @@ func TestProducer(t *testing.T) {
 
 	conn, err := connSetting.Connect()
 
-	dest.DeclareDestination(conn, false)
-
 	if err != nil {
 		t.Error("connect to rabbitmq failed.", err)
 		t.Fail()
 	}
 	defer conn.Close()
 	ch, err := conn.Channel()
+
+	dest.DeclareDestination(ch, false)
 
 	if err != nil {
 		t.Error("setup channel failed.", err)
@@ -75,7 +75,11 @@ func (cc ConsoleConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Pub
 }
 
 func TestStartConsumer(t *testing.T) {
-	StartConsumer(&dest, ConsoleConsumer{}, &connSetting)
+	cnn, err := connSetting.Connect()
+	assert.NoError(t, err, nil)
+	ch, err := cnn.Channel()
+	assert.NoError(t, err, nil)
+	StartConsumer(&dest, ConsoleConsumer{}, ch, "Demo")
 	time.Sleep(3 * time.Second)
 }
 
@@ -93,8 +97,11 @@ func TestRpc(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 
 	conn, err := connSetting.Connect()
+	assert.NoError(t, err, nil)
+	ch, err := conn.Channel()
+	assert.NoError(t, err, nil)
 
-	destRPC.DeclareDestination(conn, false)
+	destRPC.DeclareDestination(ch, false)
 
 	if err != nil {
 		t.Error("connect to rabbitmq failed.", err)
@@ -102,7 +109,7 @@ func TestRpc(t *testing.T) {
 	}
 	defer conn.Close()
 
-	go StartConsumer(&destRPC, RPCConsumer{}, &connSetting)
+	go StartConsumer(&destRPC, RPCConsumer{}, ch, "testRPC")
 
 	reqBody := []byte("Testing RPC")
 
@@ -114,8 +121,10 @@ func TestRpc(t *testing.T) {
 
 	defer cancel()
 
+	ch2, _ := conn.Channel()
+
 	sleepfor = 1
-	replied, err := destRPC.RPC(ctx, conn, req)
+	replied, err := destRPC.RPC(ctx, ch2, req)
 
 	assert.Nil(t, err)
 	assert.NotNil(t, replied)
@@ -124,7 +133,8 @@ func TestRpc(t *testing.T) {
 	defer cancel2()
 
 	sleepfor = 3
-	replied, err = destRPC.RPC(ctx2, conn, req)
+	ch3, _ := conn.Channel()
+	replied, err = destRPC.RPC(ctx2, ch3, req)
 
 	assert.NotNil(t, err)
 	assert.Nil(t, replied)
