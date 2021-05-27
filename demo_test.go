@@ -37,7 +37,7 @@ func TestDemoSend(t *testing.T) {
 	}
 	defer cnn.Close()
 
-	ch, err := cnn.Channel()
+	ch, _ := cnn.Channel()
 
 	err = dest.DeclareDestination(ch, false)
 	assert.Nil(t, err)
@@ -99,7 +99,7 @@ func TestDemoConsumer(t *testing.T) {
 	}
 	cnn, err := democonn.Connect()
 	assert.NoError(t, err, nil)
-	ch, err := cnn.Channel()
+	ch, _ := cnn.Channel()
 
 	StartConsumer(dest, DemoConsumer{}, ch, "DemoTest")
 
