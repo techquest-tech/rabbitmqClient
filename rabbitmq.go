@@ -196,6 +196,10 @@ func (mq *Destination) RPC(ctx context.Context, ch *rabbitmq.Channel, message am
 		false,
 		message,
 	)
+	if err != nil {
+		log.Error("send rpc request failed, ", err)
+		return nil, err
+	}
 	log.Info("rpc send out done")
 
 	select {

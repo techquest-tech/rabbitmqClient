@@ -76,9 +76,9 @@ func (cc ConsoleConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Pub
 
 func TestStartConsumer(t *testing.T) {
 	cnn, err := connSetting.Connect()
-	assert.NoError(t, err, nil)
+	assert.NoError(t, err)
 	ch, err := cnn.Channel()
-	assert.NoError(t, err, nil)
+	assert.NoError(t, err)
 	StartConsumer(&dest, ConsoleConsumer{}, ch, "Demo")
 	time.Sleep(3 * time.Second)
 }
@@ -97,9 +97,9 @@ func TestRpc(t *testing.T) {
 	logrus.SetLevel(logrus.DebugLevel)
 
 	conn, err := connSetting.Connect()
-	assert.NoError(t, err, nil)
+	assert.NoError(t, err)
 	ch, err := conn.Channel()
-	assert.NoError(t, err, nil)
+	assert.NoError(t, err)
 
 	destRPC.DeclareDestination(ch, false)
 
