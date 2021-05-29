@@ -37,10 +37,10 @@ func TestDemoSend(t *testing.T) {
 	}
 	defer cnn.Close()
 
-	err = dest.DeclareDestination(cnn, false)
-	assert.Nil(t, err)
+	ch, _ := cnn.Channel()
 
-	ch, err := cnn.Channel()
+	err = dest.DeclareDestination(ch, false)
+	assert.Nil(t, err)
 
 	assert.Nil(t, err)
 
@@ -97,8 +97,11 @@ func TestDemoConsumer(t *testing.T) {
 		Queue: "demo.helloworld",
 		// AutoAck: true,
 	}
+	cnn, err := democonn.Connect()
+	assert.NoError(t, err, nil)
+	ch, _ := cnn.Channel()
 
-	StartConsumer(dest, DemoConsumer{}, &democonn)
+	StartConsumer(dest, DemoConsumer{}, ch, "DemoTest")
 
 	time.Sleep(1 * time.Second)
 }

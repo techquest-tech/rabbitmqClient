@@ -6,6 +6,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
+	"github.com/techquest-tech/go-amqp-reconnect/rabbitmq"
 )
 
 // OnReceive interface for Receiver
@@ -21,26 +22,26 @@ func FailOnError(err error, msg string) {
 }
 
 // StartConsumer start process.
-func StartConsumer(destination *Destination, receiver OnReceive, connSetting *Settings) {
+func StartConsumer(destination *Destination, receiver OnReceive, ch *rabbitmq.Channel, consumerTag string) {
 	log := destination.getLogger()
 
-	conn, err := connSetting.Connect()
+	// conn, err := connSetting.Connect()
 
-	FailOnError(err, "connect to rabbitmq failed.")
+	// FailOnError(err, "connect to rabbitmq failed.")
 
 	if destination.Queue == "" {
-		destination.DeclareDestination(conn, true)
+		destination.DeclareDestination(ch, true)
 	}
 
 	log.Info("start consumer")
 	// logrus.Infof("Start consumer for %s", msg.Queue)
 
-	consumerTag := ""
-	if tag, ok := connSetting.Prop["connection_name"]; ok {
-		consumerTag = tag.(string)
-	}
+	// consumerTag := ""
+	// if tag, ok := connSetting.Prop["connection_name"]; ok {
+	// 	consumerTag = tag.(string)
+	// }
 
-	msgs, ch, err := destination.Consume(conn, consumerTag)
+	msgs, ch, err := destination.Consume(ch, consumerTag)
 
 	FailOnError(err, "consumer failed.")
 
