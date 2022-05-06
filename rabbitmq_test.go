@@ -3,11 +3,11 @@ package rabbitmq
 import (
 	"context"
 	"fmt"
+	"log"
 	"testing"
 	"time"
 
 	"github.com/creasty/defaults"
-	"github.com/sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"github.com/stretchr/testify/assert"
 )
@@ -50,6 +50,8 @@ func TestProducer(t *testing.T) {
 	defer conn.Close()
 	ch, err := conn.Channel()
 
+	defaults.Set(&dest)
+
 	dest.DeclareDestination(ch, false)
 
 	if err != nil {
@@ -69,7 +71,7 @@ func TestProducer(t *testing.T) {
 type ConsoleConsumer struct{}
 
 func (cc ConsoleConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Publishing, error) {
-	logrus.Info(string(msg.Body))
+	log.Print(string(msg.Body))
 	// time.Sleep(5 * time.Second)
 	return "", nil, nil
 }
@@ -79,7 +81,10 @@ func TestStartConsumer(t *testing.T) {
 	assert.NoError(t, err)
 	ch, err := cnn.Channel()
 	assert.NoError(t, err)
-	StartConsumer(&dest, ConsoleConsumer{}, ch, "Demo")
+
+	defaults.MustSet(&dest)
+
+	dest.StartConsumer(ConsoleConsumer{}, ch, "Demo")
 	time.Sleep(3 * time.Second)
 }
 
@@ -88,18 +93,20 @@ type RPCConsumer struct{}
 var sleepfor = time.Duration(2)
 
 func (r RPCConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Publishing, error) {
-	logrus.Info(string(msg.Body))
+	log.Print(string(msg.Body))
 	time.Sleep(sleepfor * time.Second)
 	return "", WrapRepo(msg, []byte("replied messages"), nil), nil
 }
 
 func TestRpc(t *testing.T) {
-	logrus.SetLevel(logrus.DebugLevel)
+	// logrus.SetLevel(logrus.DebugLevel)
 
 	conn, err := connSetting.Connect()
 	assert.NoError(t, err)
 	ch, err := conn.Channel()
 	assert.NoError(t, err)
+
+	defaults.MustSet(&destRPC)
 
 	destRPC.DeclareDestination(ch, false)
 
@@ -109,7 +116,7 @@ func TestRpc(t *testing.T) {
 	}
 	defer conn.Close()
 
-	go StartConsumer(&destRPC, RPCConsumer{}, ch, "testRPC")
+	go destRPC.StartConsumer(RPCConsumer{}, ch, "testRPC")
 
 	reqBody := []byte("Testing RPC")
 
