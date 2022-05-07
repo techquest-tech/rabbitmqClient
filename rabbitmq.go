@@ -80,7 +80,7 @@ func (mq *Destination) DeclareDestination(channel *rabbitmq.Channel, createTempQ
 			logger.Error("declare topic failed.", zap.Error(err))
 			return err
 		}
-		logger.Info("declare done")
+		logger.Info("declare topic done", zap.String("topic", mq.Topic))
 	}
 	if mq.Queue != "" && mq.Topic != "" {
 		//declare bind
@@ -89,7 +89,7 @@ func (mq *Destination) DeclareDestination(channel *rabbitmq.Channel, createTempQ
 			logger.Error("declare Bind failed.", zap.Error(err))
 			return err
 		}
-		logger.Info("declare bind done")
+		logger.Info("declare bind done", zap.String("topic", mq.Topic), zap.String("queue", mq.Queue))
 	}
 
 	return nil
