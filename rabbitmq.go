@@ -5,10 +5,20 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/sirupsen/logrus"
+	"github.com/creasty/defaults"
 	"github.com/streadway/amqp"
 	"github.com/techquest-tech/go-amqp-reconnect/rabbitmq"
+	"go.uber.org/zap"
 )
+
+func DefaultLogger() *zap.Logger {
+	config := zap.NewDevelopmentConfig()
+	result, err := config.Build()
+	if err != nil {
+		panic("create default logger failed.")
+	}
+	return result
+}
 
 //Destination Rabbitmq destination
 type Destination struct {
@@ -19,6 +29,13 @@ type Destination struct {
 	Exclusive    bool
 	Prefetch     int
 	DeclareAll   bool
+	Logger       *zap.Logger
+}
+
+func (r *Destination) SetDefaults() {
+	if defaults.CanUpdate(r.Logger) {
+		r.Logger = DefaultLogger()
+	}
 }
 
 // //default RPC timeout to 30 seconds
@@ -26,10 +43,7 @@ type Destination struct {
 
 //DeclareDestination declare Topic, queues....
 func (mq *Destination) DeclareDestination(channel *rabbitmq.Channel, createTempQueue bool) error {
-	logger := logrus.WithFields(logrus.Fields{
-		"topic": mq.Topic,
-		"queue": mq.Queue,
-	})
+	logger := mq.Logger
 
 	// channel, err := cnn.Channel()
 	// if err != nil {
@@ -44,17 +58,17 @@ func (mq *Destination) DeclareDestination(channel *rabbitmq.Channel, createTempQ
 		autoDelete = true
 	}
 	if mq.Queue != "" {
-		queue, err := channel.QueueDeclare(mq.Queue,
+		_, err := channel.QueueDeclare(mq.Queue,
 			true,
 			autoDelete,
 			mq.Exclusive,
 			false,
 			nil)
 		if err != nil {
-			logger.Error("declare queue failed, ", err)
+			logger.Error("declare queue failed, ", zap.Error(err))
 			return err
 		}
-		logger.Infof("declare queue %s done.", queue.Name)
+		logger.Info("declare queue done.", zap.String("queue", mq.Queue))
 	}
 
 	if mq.Topic != "" {
@@ -63,19 +77,19 @@ func (mq *Destination) DeclareDestination(channel *rabbitmq.Channel, createTempQ
 		}
 		err := channel.ExchangeDeclare(mq.Topic, mq.ExchangeType, true, false, false, false, nil)
 		if err != nil {
-			logger.Error("declare topic failed.", err)
+			logger.Error("declare topic failed.", zap.Error(err))
 			return err
 		}
-		logger.Info("declare done")
+		logger.Info("declare topic done", zap.String("topic", mq.Topic))
 	}
 	if mq.Queue != "" && mq.Topic != "" {
 		//declare bind
 		err := channel.QueueBind(mq.Queue, "#", mq.Topic, false, nil)
 		if err != nil {
-			logger.Error("declare Bind failed.", err)
+			logger.Error("declare Bind failed.", zap.Error(err))
 			return err
 		}
-		logger.Infof("declare bind %s to %s done", mq.Topic, mq.Queue)
+		logger.Info("declare bind done", zap.String("topic", mq.Topic), zap.String("queue", mq.Queue))
 	}
 
 	return nil
@@ -84,10 +98,7 @@ func (mq *Destination) DeclareDestination(channel *rabbitmq.Channel, createTempQ
 //Consume start consumer
 func (mq *Destination) Consume(ch *rabbitmq.Channel, consumerTag string) (<-chan amqp.Delivery, *rabbitmq.Channel, error) {
 
-	logger := logrus.WithFields(logrus.Fields{
-		"topic": mq.Topic,
-		"queue": mq.Queue,
-	})
+	logger := mq.Logger
 
 	logger.Info("start consumer.")
 
@@ -107,7 +118,7 @@ func (mq *Destination) Consume(ch *rabbitmq.Channel, consumerTag string) (<-chan
 	if err != nil {
 		return nil, ch, err
 	}
-	logger.Info("set prefetch size = ", mq.Prefetch)
+	logger.Info("set prefetch size", zap.Int("perfetch", mq.Prefetch))
 	// }
 
 	//check if need to declare topic
@@ -118,23 +129,23 @@ func (mq *Destination) Consume(ch *rabbitmq.Channel, consumerTag string) (<-chan
 	// 	}
 	// 	logrus.Info("declare done.")
 	// }
-	logrus.Info("start consumer")
+	logger.Info("start consumer")
 	//start consumer
 
 	data, err := ch.Consume(mq.Queue, consumerTag, mq.AutoAck, mq.Exclusive, false, false, nil)
 	return data, ch, err
 }
 
-func (mq *Destination) getLogger() *logrus.Entry {
-	return logrus.WithFields(logrus.Fields{
-		"topic": mq.Topic,
-		"queue": mq.Queue,
-	})
-}
+// func (mq *Destination) getLogger() *logrus.Entry {
+// 	return logrus.WithFields(logrus.Fields{
+// 		"topic": mq.Topic,
+// 		"queue": mq.Queue,
+// 	})
+// }
 
 //Produce publish message
 func (mq *Destination) Produce(channel *rabbitmq.Channel, message amqp.Publishing) error {
-	logger := mq.getLogger()
+	logger := mq.Logger
 	// if mq.DeclareAll {
 	// 	mq.DeclareDestination(channel, false)
 	// 	logger.Info("declare done.")
@@ -142,7 +153,7 @@ func (mq *Destination) Produce(channel *rabbitmq.Channel, message amqp.Publishin
 	message.DeliveryMode = amqp.Persistent
 	err := channel.Publish(mq.Topic, mq.Queue, false, false, message)
 	if err != nil {
-		logger.Error("publish message failed, ", err)
+		logger.Error("publish message failed, ", zap.Error(err))
 		return err
 	}
 
@@ -162,7 +173,7 @@ func (mq *Destination) generateCorrID() string {
 
 //RPC RPC over rabbitmq message. timeout setting should be ctx
 func (mq *Destination) RPC(ctx context.Context, ch *rabbitmq.Channel, message amqp.Publishing) (*amqp.Delivery, error) {
-	log := mq.getLogger()
+	log := mq.Logger
 
 	// ch, err := conn.Channel()
 	// if err != nil {
@@ -176,7 +187,7 @@ func (mq *Destination) RPC(ctx context.Context, ch *rabbitmq.Channel, message am
 		return nil, err
 	}
 
-	log.Debug("make template queue ready, queue = ", replyQueue.Name)
+	log.Debug("make template queue ready", zap.String("tempQueue", replyQueue.Name))
 
 	msgs, err := ch.Consume(replyQueue.Name, fmt.Sprintf("%s-rpc", mq.Queue), true, false, false, false, nil)
 	if err != nil {
@@ -197,14 +208,14 @@ func (mq *Destination) RPC(ctx context.Context, ch *rabbitmq.Channel, message am
 		message,
 	)
 	if err != nil {
-		log.Error("send rpc request failed, ", err)
+		log.Error("send rpc request failed, ", zap.Error(err))
 		return nil, err
 	}
 	log.Info("rpc send out done")
 
 	select {
 	case <-ctx.Done():
-		log.Error("RPC time out or canceled. err ", ctx.Err())
+		log.Error("RPC time out or canceled. err ", zap.Error(ctx.Err()))
 		return nil, ctx.Err()
 	case replied := <-msgs:
 		log.Info("get replied")

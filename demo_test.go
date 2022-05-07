@@ -2,10 +2,11 @@ package rabbitmq
 
 import (
 	"fmt"
+	"log"
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/creasty/defaults"
 	"github.com/streadway/amqp"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,6 +29,8 @@ func TestDemoSend(t *testing.T) {
 		ExchangeType: "headers",
 		DeclareAll:   true,
 	}
+
+	defaults.MustSet(&dest)
 
 	cnn, err := democonn.Connect()
 
@@ -83,10 +86,11 @@ var ErrorEnabled bool = true
 type DemoConsumer struct{}
 
 func (d DemoConsumer) OnReceiveMessage(msg amqp.Delivery) (string, *amqp.Publishing, error) {
-	logrus.Info(string(msg.Body))
+	// logrus.Info(string(msg.Body))
+	log.Print(string(msg.Body))
 	// time.Sleep(5 * time.Second)
 	if ErrorEnabled {
-		logrus.Error("throw exception for demo only")
+		log.Print("throw exception for demo only")
 		return "", nil, fmt.Errorf("demo error when process message")
 	}
 	return "", nil, nil
@@ -97,11 +101,13 @@ func TestDemoConsumer(t *testing.T) {
 		Queue: "demo.helloworld",
 		// AutoAck: true,
 	}
+	defaults.MustSet(dest)
+
 	cnn, err := democonn.Connect()
 	assert.NoError(t, err, nil)
 	ch, _ := cnn.Channel()
 
-	StartConsumer(dest, DemoConsumer{}, ch, "DemoTest")
+	dest.StartConsumer(DemoConsumer{}, ch, "DemoTest")
 
 	time.Sleep(1 * time.Second)
 }
